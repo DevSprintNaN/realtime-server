@@ -1,0 +1,18 @@
+{
+  "name": "realtime-server",
+  "version": "1.0.0",
+  "description": "This server deals with real-time chat functionalities and whiteboard features, the target is essentially to allow real-time collaboration",
+  "main": "server.js",
+  "scripts": {
+    "test": "test",
+    "dev": "nodemon -L server.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.4",
+    "express": "^4.18.2",
+    "nodemon": "^3.0.3",
+    "socket.io": "^4.7.4"
+  }
+}
