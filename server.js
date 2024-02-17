@@ -2,31 +2,11 @@ const { Server } = require('http');
 const express = require('express');
 const socketIO = require('socket.io');
 const axios = require('axios');
-const { createAdapter } = require('@socket.io/redis-adapter');
-const redis = require('redis');
 require('dotenv').config();
 
 const app = express();
 const server = Server(app);
 const io = socketIO(server);
-
-const redisClient = redis.createClient({
-  host: process.env.REDISHOST || 'localhost',
-  port: process.env.REDISPORT || '6379',
-});
-redisClient.connect().then(()=>console.log("Success"));
-
-const subClient = redisClient.duplicate();
-io.adapter(createAdapter(redisClient, subClient));
-
-
-redisClient.on('error', err => {
-  console.error('Redis client error:', err);
-});
-
-subClient.on('error', err => {
-  console.error('Redis subClient error:', err);
-});
 
 const socketToRoom = {};
 
