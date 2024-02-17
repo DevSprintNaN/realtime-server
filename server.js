@@ -13,13 +13,13 @@ const io = socketIO(server);
 const redisClient = redis.createClient({
   host: process.env._REDIS_HOST,
   port: process.env._REDIS_PORT,
-  password: process.env._REDIS_PASSWORD,
 });
+redisClient.connect().then(()=>console.log("Success"));
 
 const subClient = redisClient.duplicate();
 io.adapter(createAdapter(redisClient, subClient));
 
-// Error handlers
+
 redisClient.on('error', err => {
   console.error('Redis client error:', err);
 });
@@ -50,12 +50,17 @@ io.on('connection', socket => {
       io.to(roomName).emit('message', message);
       console.log(`Message sent to room ${roomName}:`, message);
       try {
-        await axios.post(`${process.env.PRIMARY_SERVER}/messaging/add`, {
+        await axios.post(`${process.env._PRIMARY_SERVER}/messaging/add`, {
           ...message,
           projectID: roomName
+        },{
+          headers: {
+            origin:"http://localhost:4000"
+          }
         });
       } catch (error) {
         console.log("Server Not Available");
+        console.log(error);
       }
     } else {
       console.log(`Error: ${socket.id} is not in any room.`);
