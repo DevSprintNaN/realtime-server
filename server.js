@@ -11,8 +11,8 @@ const server = Server(app);
 const io = socketIO(server);
 
 const redisClient = redis.createClient({
-  host: process.env._REDIS_HOST,
-  port: process.env._REDIS_PORT,
+  host: process.env.REDISHOST || 'localhost',
+  port: process.env.REDISPORT || '6379',
 });
 redisClient.connect().then(()=>console.log("Success"));
 
