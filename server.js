@@ -1,14 +1,45 @@
-const { Server } = require('http');
-const express = require('express');
 const socketIO = require('socket.io');
 const axios = require('axios');
+const { createAdapter } = require('@socket.io/redis-adapter');
+const redis = require('redis');
 require('dotenv').config();
 
-const app = express();
-const server = Server(app);
-const io = socketIO(server);
+const io = socketIO(process.env._PORT, {
+  cors: {
+    origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080', 'https://dev--dev-server-projecthub.netlify.app', 'https://production-projecthub.netlify.app']
+  }
+});
+
+const redisClient = redis.createClient({
+  url: process.env._REDIS_HOST,
+});
+redisClient.connect().then(() => console.log("Redis client connected"));
+
+const subClient = redisClient.duplicate();
+io.adapter(createAdapter(redisClient, subClient));
 
 const socketToRoom = {};
+
+redisClient.on('error', err => {
+  console.error('Redis client error:', err);
+});
+
+subClient.on('error', err => {
+  console.error('Redis subClient error:', err);
+});
+
+subClient.subscribe('socket-room-map');
+
+subClient.on('message', (channel, message) => {
+  const { action, socketId, roomName } = JSON.parse(message);
+  if (action === 'join') {
+    socketToRoom[socketId] = roomName;
+    console.log(`Socket ${socketId} joined room ${roomName}`);
+  } else if (action === 'leave') {
+    delete socketToRoom[socketId];
+    console.log(`Socket ${socketId} left room ${roomName}`);
+  }
+});
 
 io.on('connection', socket => {
   console.log(`Socket ${socket.id} connected`);
@@ -17,11 +48,13 @@ io.on('connection', socket => {
     console.log(`${socket.id} joined room`, roomName);
     socket.join(roomName);
     socketToRoom[socket.id] = roomName;
+    redisClient.publish('socket-room-map', JSON.stringify({ action: 'join', socketId: socket.id, roomName }));
   });
 
   socket.on('leave room', roomName => {
     socket.leave(roomName);
     delete socketToRoom[socket.id];
+    redisClient.publish('socket-room-map', JSON.stringify({ action: 'leave', socketId: socket.id, roomName }));
   });
 
   socket.on('message', async message => {
@@ -35,7 +68,7 @@ io.on('connection', socket => {
           projectID: roomName
         },{
           headers: {
-            origin:"http://localhost:4000"
+            xAuthToken: process.env._AUTH_TOKEN
           }
         });
       } catch (error) {
@@ -51,7 +84,6 @@ io.on('connection', socket => {
     const roomName = socketToRoom[socket.id];
     if (roomName) {
       io.to(roomName).emit('canvas-data', data);
-      console.log(`Canvas Data to room ${roomName}:`, data);
     } else {
       console.log(`Error: ${socket.id} is not in any room.`);
     }
@@ -66,9 +98,4 @@ io.on('connection', socket => {
       console.log(`Socket ${socket.id} disconnected`);
     }
   });
-});
-
-const _PORT = process.env._PORT || 4000;
-server.listen(_PORT, () => {
-  console.log(`Server is running on port ${_PORT}`);
 });
