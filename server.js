@@ -68,7 +68,7 @@ io.on('connection', socket => {
           projectID: roomName
         },{
           headers: {
-            xAuthToken: process.env._AUTH_TOKEN
+            verifyorigin: process.env._AUTH_TOKEN
           }
         });
       } catch (error) {
